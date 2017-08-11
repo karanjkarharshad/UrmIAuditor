@@ -20,26 +20,26 @@ namespace UrmIAuditor.Controllers
 		[HttpGet]
 		
 
-		public async Task<HttpResponseMessage> Get(string audit_id = "", string template="", string order="", string modified_after="", string modified_before = "")
-		{   
-            
+		public async Task<HttpResponseMessage> Get(string template="", string order="", string modified_after="", string modified_before = "",string completed="")
+		{
+
             DateTime thisDay = DateTime.Today;
             //If modified_after="", by default, it has been assumed to get the data for Today
             if (String.IsNullOrEmpty(modified_after))
             {
-                
+
                 modified_after = thisDay.ToString("yyyy-MM-dd");
             }
             //If modified_after="Week", get data for Last 7 Days
             else if (modified_after == "Week")
             {
-                
+
                 DateTime sevenDaysEarlier = thisDay.AddDays(-7);
                 modified_after = sevenDaysEarlier.ToString("yyyy-MM-dd");
 
             }
-			
-			var result = await GetTemplateListAsync(audit_id, template, order, modified_after, modified_before);
+            
+			var result = await GetTemplateListAsync(template, order, modified_after, modified_before,completed);
 			if (result != null)
 			{
 				return Request.CreateResponse(HttpStatusCode.OK, result);
@@ -51,7 +51,7 @@ namespace UrmIAuditor.Controllers
 			
 		} 
 	
-		public async Task<JObject> GetTemplateListAsync(string audit_id, string template, string order, string modified_after, string modified_before)
+		public async Task<JObject> GetTemplateListAsync(string template, string order, string modified_after, string modified_before,string completed)
 		{
 			string uri = "https://api.safetyculture.io/";
 
@@ -59,10 +59,9 @@ namespace UrmIAuditor.Controllers
 			
 			string parameters = null;
             //Create the Query String for Searching Audits
-			if (!String.IsNullOrEmpty(audit_id) || !String.IsNullOrEmpty(template)  || !String.IsNullOrEmpty(order)  || !String.IsNullOrEmpty(modified_after) || !String.IsNullOrEmpty(modified_before))
+			if (!String.IsNullOrEmpty(template)  || !String.IsNullOrEmpty(order)  || !String.IsNullOrEmpty(modified_after) || !String.IsNullOrEmpty(modified_before) || !String.IsNullOrEmpty(completed))
 			{
-				if (!String.IsNullOrEmpty(audit_id))
-					parameters += "audit_id=" + audit_id;
+			
 
 				if (!String.IsNullOrEmpty(template) && !String.IsNullOrEmpty(parameters))
 					parameters += "&template=" + template;
@@ -81,10 +80,15 @@ namespace UrmIAuditor.Controllers
 
 				if (!String.IsNullOrEmpty(modified_before) && !String.IsNullOrEmpty(parameters))
 					parameters += "&modified_before=" + modified_before;
-				else if (!String.IsNullOrEmpty(modified_after) && String.IsNullOrEmpty(parameters))
+				else if (!String.IsNullOrEmpty(modified_before) && String.IsNullOrEmpty(parameters))
 					parameters += "modified_before=" + modified_before;
 
-				string urlEncodedParameter = System.Web.HttpUtility.UrlPathEncode(parameters);
+                if (!String.IsNullOrEmpty(completed) && !String.IsNullOrEmpty(parameters))
+                    parameters += "&completed=" + completed;
+                else if (!String.IsNullOrEmpty(completed) && String.IsNullOrEmpty(parameters))
+                    parameters += "completed=" + completed;
+
+                string urlEncodedParameter = System.Web.HttpUtility.UrlPathEncode(parameters);
 				//Adding parameters to resource
 				resource += "?" + urlEncodedParameter;
 			}
@@ -104,7 +108,7 @@ namespace UrmIAuditor.Controllers
             //Initialise Variables
 			string jsonResponse = null;
             string jsonResponseString1 = null;
-            JObject json = null;
+            //JObject json = null;
             JObject json1 = null;
             
 

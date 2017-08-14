@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -23,23 +24,51 @@ namespace UrmIAuditor.Controllers
 		public async Task<HttpResponseMessage> Get(string template="", string order="", string modified_after="", string modified_before = "",string completed="")
 		{
 
-            DateTime thisDay = DateTime.Today;
+            //DateTime thisDay = DateTime.Today;
+            //Get Local Date
+            DateTime thisDay = DateTime.Today.ToLocalTime();
+
+            //Get Time Zone and UTC OffSet
+            TimeZone localZone = TimeZone.CurrentTimeZone;
+            TimeSpan currentOffset = localZone.GetUtcOffset(thisDay);
+
+            //Convert the offset string to format "+hhmm"
+            string currentOffSetString = currentOffset.ToString();
+            string[] offsetArray= currentOffSetString.Split(':');
+            string offSetString = offsetArray[0] + offsetArray[1];
+
             //If modified_after="", by default, it has been assumed to get the data for Today
             if (String.IsNullOrEmpty(modified_after))
             {
 
-                modified_after = thisDay.ToString("yyyy-MM-dd");
+                modified_after = thisDay.ToString("yyyy-MM-dd'T'HH:mm:ss");
+                modified_after += "+" + offSetString;
+                modified_after = HttpUtility.UrlEncode(modified_after);
             }
             //If modified_after="Week", get data for Last 7 Days
             else if (modified_after == "Week")
             {
 
                 DateTime sevenDaysEarlier = thisDay.AddDays(-7);
-                modified_after = sevenDaysEarlier.ToString("yyyy-MM-dd");
+                modified_after = sevenDaysEarlier.ToString("yyyy-MM-dd'T'HH:mm:ss");
+                modified_after += "+" + offSetString;
+                modified_after = HttpUtility.UrlEncode(modified_after);
 
             }
-            
-			var result = await GetTemplateListAsync(template, order, modified_after, modified_before,completed);
+            else
+            {
+                modified_after = HttpUtility.UrlEncode(modified_after);
+            }
+
+            // Url Encode the modified_before string
+            if (!String.IsNullOrEmpty(modified_before))
+            {
+
+               
+                modified_before = HttpUtility.UrlEncode(modified_before);
+            }
+
+            var result = await GetTemplateListAsync(template, order, modified_after, modified_before,completed);
 			if (result != null)
 			{
 				return Request.CreateResponse(HttpStatusCode.OK, result);
@@ -88,13 +117,13 @@ namespace UrmIAuditor.Controllers
                 else if (!String.IsNullOrEmpty(completed) && String.IsNullOrEmpty(parameters))
                     parameters += "completed=" + completed;
 
-                string urlEncodedParameter = System.Web.HttpUtility.UrlPathEncode(parameters);
-				//Adding parameters to resource
-				resource += "?" + urlEncodedParameter;
-			}
+
+                //Adding parameters to resource
+                resource += "?" + parameters;
+            }
 
             //Preparing the Http Client. This is client Object has been reused for all the Safety Culture API calls
-			HttpClient client = new HttpClient();
+            HttpClient client = new HttpClient();
 			client.BaseAddress = new Uri(uri);
 			client.DefaultRequestHeaders.Add("User-Agent", "UrmIAuditorClient/1.0");
 			client.DefaultRequestHeaders.Add("Accept", "application/json");
